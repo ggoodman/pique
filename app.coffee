@@ -7,6 +7,8 @@ _ = require('underscore')._
 
 app = module.exports = express.createServer()
 
+settings = require './settings'
+
 app.configure ->
   app.set 'views', __dirname + '/views'
   app.use stylus.middleware
@@ -23,10 +25,10 @@ emitter = new EventEmitter()
 server = dnode (remote, conn) ->
   listeners = {}
 
-  c = new cradle.Connection 'http://filearts.iriscouch.com',
+  c = new cradle.Connection settings.couch.host,
     auth:
-      username: settings.username
-      password: settings.password
+      username: settings.couch.username
+      password: settings.couch.password
     cache: true
     raw: false
   
