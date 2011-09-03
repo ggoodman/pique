@@ -4,6 +4,7 @@ dnode = require 'dnode'
 cradle = require 'cradle'
 EventEmitter = require('events').EventEmitter
 _ = require('underscore')._
+now = require 'now'
 
 app = module.exports = express.createServer()
 
@@ -17,9 +18,22 @@ app.configure ->
   app.use express.compiler
     src: __dirname + '/views'
     dest: __dirname + '/public'
-    enable: ['coffeescript']
+    enable: ['coffeescript', 'less']
   app.use express.static __dirname + '/public'
   app.use express.logger(format: ':method :url')
+  
+
+to_json = (obj) ->
+  obj.id = obj._id
+  delete obj._id
+  delete obj._rev
+  return obj
+
+from_json = (json) ->
+  if json.id?
+    obj._id = json.id
+    delete obj.id
+  return json
 
 emitter = new EventEmitter()
 server = dnode (remote, conn) ->
@@ -49,15 +63,14 @@ server = dnode (remote, conn) ->
   
   conn.on 'end', ->
     console.log "Connection closed", arguments...
-    emitter.removeListener event, listener for event, listener of listeners
+    for event, listener of listeners
+      console.log "Lumbar.forget", event, listener
+      emitter.removeListener event, listener 
 
   create: (type, json, options) ->
     console.log "Server.create", arguments...
     
     json.type = type
-    if json.id
-      json._id = json.id
-      delete json.id
     
     db.save json, (err, res) ->
       console.log "Document created", arguments...
@@ -71,11 +84,29 @@ server = dnode (remote, conn) ->
   read: (type, json, options) ->
     console.log "Server.read", arguments...
     
-    db.view 'nodes/by_type',
-      key: type
-      (err, res) ->
-        options.error() if err
-        options.success(_(res).pluck('value')) if not err
+    if json.id
+      db.get json.id, (err, res) ->
+        if err
+          options.error()
+        else
+          json.id = res.id
+          options.success(json) unless err
+    else
+      db.view 'nodes/by_type',
+        key: type
+        (err, res) ->
+          if err
+            options.error()
+          else
+            ret = []
+            for hash in res
+              json = _(hash.value).clone()
+              delete json._id
+              delete json._rev
+              json.id = hash.id
+              ret.push(json)
+            options.success(ret)
+
 
   update: (type, json, options) ->
     console.log "Server.update", arguments...
@@ -105,10 +136,12 @@ server = dnode (remote, conn) ->
           options.success()
           emitter.emit "lumbar:#{type}:delete", conn.id, json
   
-  listen: (key, event, cb) ->
+  listen: (key, cb) ->
     console.log "Server.listen", arguments...
     
-    emitter.on "lumbar:#{key}:#{event}", (id, args...) ->
+    listeners[key] = cb
+    
+    emitter.on "lumbar:#{key}", (id, args...) ->
       console.log "Caught event", arguments...
       cb(args...) if id != conn.id
 
