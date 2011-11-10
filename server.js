@@ -1,6 +1,4 @@
-//require.paths.unshift(__dirname + '/vendor');
+var coffee = require('coffee-script')
+  , app = require('./app');
 
-require('coffee-script');
-var app = require('./app');
-
-app.listen(process.env.C9_PORT);
+app.listen(process.env.PORT);
