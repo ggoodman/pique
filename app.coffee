@@ -1,13 +1,16 @@
-express = require 'express'
-everyauth = require 'everyauth'
+coffee = require "coffee-script"
+express = require "express"
+everyauth = require "everyauth"
 app = module.exports = express.createServer()
 config = require "./config"
+coffeekup = require "coffeekup"
+expose = require "express-expose"
+
 
 everyauth.github
   .appId(config.appId)
   .appSecret(config.appSecret)
   .findOrCreateUser (session, accessToken, accessTokenExtra, githubUserMetadata) ->
-    console.log "findOrCreateUser", githubUserMetadata
     githubUserMetadata
   .redirectPath("/")
 
@@ -16,6 +19,17 @@ app.configure ->
   app.use express.cookieParser()
   app.use express.session({secret: config.sessionSecret})
   app.use everyauth.middleware()
+  app.use express.compiler
+    src: __dirname + "/source"
+    dest: __dirname + "/public"
+    enable: ["coffeescript"]
+  app.use express.static(__dirname + "/public")
+  
+  app.register ".coffee", coffeekup.adapters.express
+  
+  app.set('view engine', 'coffee')
 
 app.get '/', (req, res) ->
-  res.send "Hello world"
+  res.render "test.coffee", layout: false
+
+everyauth.helpExpress(app)

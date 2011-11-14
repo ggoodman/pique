@@ -1,0 +1,13 @@
+!!! 5
+html
+  head
+    title Pique
+    - if (everyauth.loggedIn)
+      script(type="text/javascript")
+        github_token = "!{everyauth.github.accessToken}";
+    script(type="text/javascript",src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js")
+    script(type="text/javascript",src="lib/pique.js")
+    link(rel="stylesheet",type="text/css",href="style/bootstrap.css")
+  body
+    #main
+      != body
